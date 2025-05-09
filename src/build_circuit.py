@@ -3,18 +3,18 @@ import scipy as sp
 import stim
 from typing import List, FrozenSet, Dict
 from scipy.sparse import csc_matrix
+import networkx as nx
 
 from src.utils import edge_coloring_bipartite
 
-def build_QRM_circuit(QRM, p, num_repeat, z_basis=True, use_both=False, HZH=False):
-    circuit = stim.Circuit()
 
-    edges, num_colors = edge_coloring_bipartite(np.array(QRM.GS))
+def build_QRM_circuit(QRM, p, num_repeat, z_basis=True, use_both=False, HZH=False, aggregate_method="simple"):
+    circuit = stim.Circuit()
+    
+    edge_coloring, colors = edge_coloring_bipartite(np.concatenate((QRM.GSZ, QRM.GSX)))
     
     data_size = QRM.N
-    stab_size = len(QRM.GS)
-    aggregate_matrix = QRM.aggregate_matrix
-
+    stab_size = len(QRM.GSX)
     #Data and ancilla initialization
     for i in range(QRM.N):
         circuit.append("R" if z_basis else "RX", i)
@@ -29,18 +29,41 @@ def build_QRM_circuit(QRM, p, num_repeat, z_basis=True, use_both=False, HZH=Fals
     #Z stab SE first round
     Z_stab_SE = ""
     X_stab_SE = ""
-    for color in range(num_colors):
-        for edge in edges[color]:
-            Z_stab_SE += f"CNOT {edge[1]} {edge[0]+data_size}\n"
-            Z_stab_SE += f"DEPOLARIZE2({p}) {edge[1]} {edge[0]+data_size}\n"
-            X_stab_SE += f"CNOT {edge[0] + data_size+ stab_size} {edge[1]}\n"
-            X_stab_SE += f"DEPOLARIZE2({p}) {edge[0] + data_size+ stab_size} {edge[1]}\n"
-        Z_stab_SE += f"TICK \n"
-        X_stab_SE += f"TICK \n"
-    circuit += stim.Circuit(Z_stab_SE)
-    circuit += stim.Circuit(X_stab_SE)
+    if aggregate_method=="complete":
+        GSZT = list(np.transpose(np.concatenate((QRM.GSZ, QRM.GSX))))
+        while np.any(GSZT):
+            linked_GSZ = list(range(2*stab_size))
+            for i, row in enumerate(GSZT):
+                for j, element in enumerate(row):
+                    if element == 1 and j in linked_GSZ and i<=32:
+                        GSZT[i][j]=0
+                        linked_GSZ.remove(j)
+                        Z_stab_SE += f"CNOT {i} {j+data_size}\n"
+                        Z_stab_SE += f"DEPOLARIZE2({p}) {i} {j+data_size}\n"
+                        break
+                    elif element == 1 and j in linked_GSZ and i>32:
+                        GSZT[i][j]=0
+                        linked_GSZ.remove(j)
+                        Z_stab_SE += f"CNOT {j+data_size+stab_size} {i}\n"
+                        Z_stab_SE += f"DEPOLARIZE2({p}) {j+data_size+stab_size} {i}\n"
+                        break
+            Z_stab_SE += f"TICK \n"
+        circuit += stim.Circuit(Z_stab_SE)
+    #circuit += stim.Circuit(X_stab_SE)
 
-    
+    for color in range(colors+1):
+        for edge in edge_coloring[color]:
+            if edge[0]<48:
+                circuit.append("CNOT", [int(edge[1]), int(edge[0])+data_size])
+            else:
+                circuit.append("CNOT", [int(edge[0])+data_size, int(edge[1])])
+        #linked_edges = X_tanner_graph.edges(edge[1], "color")
+        #max_color_value = max(edge_tuple[2] for edge_tuple in linked_edges)
+        #if color == max_color_value:
+        #    circuit.append("Z_ERROR", n + len(GZ)+int(edge[1][1:]), p)
+        #    circuit.append("MX", n + len(GZ)+int(edge[1][1:]))
+                
+    circuit.append("TICK")
     ###########ROUNDS
     round_circuit = stim.Circuit()
 
@@ -63,20 +86,8 @@ def build_QRM_circuit(QRM, p, num_repeat, z_basis=True, use_both=False, HZH=Fals
     round_circuit += stim.Circuit(X_ancilla_measurment)
     round_circuit.append("TICK")
 
-    Z_stab_SE = ""
-    X_stab_SE = ""
-    for color in range(num_colors):
-        for edge in edges[color]:
-            Z_stab_SE += f"CNOT {edge[1]} {edge[0]+data_size}\n"
-            Z_stab_SE += f"DEPOLARIZE2({p}) {edge[1]} {edge[0]+data_size}\n"
-            X_stab_SE += f"CNOT {edge[0] + data_size+ stab_size} {edge[1]}\n"
-            X_stab_SE += f"DEPOLARIZE2({p}) {edge[0] + data_size+ stab_size} {edge[1]}\n"
-        Z_stab_SE += f"TICK \n"
-        X_stab_SE += f"TICK \n"
-    round_circuit += stim.Circuit(Z_stab_SE)
-    round_circuit += stim.Circuit(X_stab_SE)
+    
     ######
-
     circuit += (num_repeat-1)*round_circuit
 
 
@@ -92,40 +103,58 @@ def build_QRM_circuit(QRM, p, num_repeat, z_basis=True, use_both=False, HZH=Fals
     circuit += stim.Circuit(final_X_ancilla_measurment)
     
     
-    detector_str = ""
-    for round_num in range(num_repeat):
-        if round_num==0:
-            if z_basis:
-                for row in aggregate_matrix:
-                    detector_str += "DETECTOR "
-                    for i, value in enumerate(row):
-                        if value == 1:
-                            detector_str += f"rec[{-((num_repeat-round_num)*stab_size*2)+i}] "
-                    detector_str += "\n"
-            else:
-                for row in aggregate_matrix:
-                    detector_str += "DETECTOR "
-                    for i, value in enumerate(row):
-                        if value == 1:
-                            detector_str += f"rec[{-((num_repeat-round_num)*stab_size*2)+i+stab_size}] "
-                    detector_str += "\n"
-        else:
-            if z_basis:
-                for row in aggregate_matrix:
-                    detector_str += "DETECTOR "
-                    for i, value in enumerate(row):
-                        if value == 1:
-                            detector_str += f"rec[{-((num_repeat-round_num+1)*stab_size*2)+i}] rec[{-((num_repeat-round_num)*stab_size*2)+i}] "
-                    detector_str += "\n"
-            else:
-                for row in aggregate_matrix:
-                    detector_str += "DETECTOR "
-                    for i, value in enumerate(row):
-                        if value == 1:
-                            detector_str += f"rec[{-((num_repeat-round_num+1)*stab_size*2)+i+stab_size}] rec[{-((num_repeat-round_num)*stab_size*2)+i+stab_size}] "
-                    detector_str += "\n"
-    detector_circuit = stim.Circuit(detector_str) 
-    circuit += detector_circuit
+    #detector_str = ""
+    #for round_num in range(num_repeat):
+    #    if round_num==0:
+    #        if z_basis:
+    #            for i, row in enumerate(QRM.aggregate_matrix_Z):
+    #                detector_str += "DETECTOR "
+    #                for j, value in enumerate(row):
+    #                    if value == 1:
+    #                        detector_str += f"rec[{-((num_repeat-round_num)*stab_size*2)+j}] "
+    #                for l in QRM.overchecked_SZ:
+    #                    if l==i:
+    #                        for k, element in enumerate(QRM.extra_aggregate_matrix_Z[QRM.overchecked_SZ.index(i)]):
+    #                            if value == 1:
+    #                                detector_str += f"rec[{-((num_repeat-round_num)*stab_size*2)+k}] "
+    #                detector_str += "\n"
+    #        else:
+    #            for i, row in enumerate(QRM.aggregate_matrix_X):
+    #                detector_str += "DETECTOR "
+    #                for j, value in enumerate(row):
+    #                    if value == 1:
+    #                        detector_str += f"rec[{-((num_repeat-round_num)*stab_size*2)+j}] "
+    #                if i in QRM.overchecked_SX:
+    #                    for k, element in enumerate(QRM.extra_aggregate_matrix_X[QRM.overchecked_SX.index(i)]):
+    #                        if value == 1:
+    #                            detector_str += f"rec[{-((num_repeat-round_num)*stab_size*2)+k}] "
+    #                detector_str += "\n"
+    #    else:
+    #        if z_basis:
+    #            for i, row in enumerate(QRM.aggregate_matrix_Z):
+    #                detector_str += "DETECTOR "
+    #                for j, value in enumerate(row):
+    #                    if value == 1:
+    #                        detector_str += f"rec[{-((num_repeat-round_num+1)*stab_size*2)+j}] rec[{-((num_repeat-round_num)*stab_size*2)+j}] "
+    #                if i in QRM.overchecked_SZ:
+    #                    for k, element in enumerate(QRM.extra_aggregate_matrix_Z[QRM.overchecked_SZ.index(i)]):
+    #                        if value == 1:
+    #                            detector_str += f"rec[{-((num_repeat-round_num+1)*stab_size*2)+k}] rec[{-((num_repeat-round_num)*stab_size*2)+k}] "
+    #                detector_str += "\n"
+    #        else:
+    #            for i, row in enumerate(QRM.aggregate_matrix_X):
+    #                detector_str += "DETECTOR "
+    #                for j, value in enumerate(row):
+    #                    if value == 1:
+    #                        detector_str += f"rec[{-((num_repeat-round_num+1)*stab_size*2)+j+stab_size}] rec[{-((num_repeat-round_num)*stab_size*2)+j+stab_size}] "
+    #                for l in QRM.overchecked_SZ:
+    #                    if l==i:
+    #                        for k, element in enumerate(QRM.extra_aggregate_matrix_X[QRM.overchecked_SX.index(i)]):
+    #                            if value == 1:
+    #                                detector_str += f"rec[{-((num_repeat-round_num+1)*stab_size*2)+k+stab_size}] rec[{-((num_repeat-round_num)*stab_size*2)+k+stab_size}] "
+    #                detector_str += "\n"
+    #detector_circuit = stim.Circuit(detector_str) 
+    #circuit += detector_circuit
 
 
     for i in range(QRM.N):
@@ -134,32 +163,46 @@ def build_QRM_circuit(QRM, p, num_repeat, z_basis=True, use_both=False, HZH=Fals
     round_circuit.append("TICK")
 
 
-    detector_str = ""
-    if z_basis:
-        for i, row in enumerate(QRM.SZ):
-            detector_str += "DETECTOR "
-            for k, value in enumerate(aggregate_matrix[i]):
-                if value == 1:
-                    detector_str += f"rec[{-(QRM.N+stab_size*2)+k}] "
-            for j, value in enumerate(row):                                     
-                if value==1:                                                    
-                    detector_str +=f"rec[{j-QRM.N}] "                               
-            detector_str += "\n"
-    observable_str = ""
-    if z_basis:
-        for i, row in enumerate(QRM.LZ):
-            observable_str += f"OBSERVABLE_INCLUDE({i}) "
-            for j, value in enumerate(row):
-                if value == 1:
-                    observable_str += f"rec[{j-QRM.N}] "
-            observable_str += "\n"
-    detector_circuit = stim.Circuit(detector_str) 
-    circuit += detector_circuit
-        
-    observable_circuit = stim.Circuit(observable_str)
-    circuit+= observable_circuit
+    #detector_str = ""
+    #if z_basis:
+    #    for i, row in enumerate(QRM.SZ):
+    #        detector_str += "DETECTOR "
+    #        for k, value in enumerate(aggregate_matrix_Z[i]):
+    #            if value == 1:
+    #                detector_str += f"rec[{-(QRM.N+stab_size*2)+k}] "
+    #        for j, value in enumerate(row):                                     
+    #            if value==1:                                                    
+    #                detector_str +=f"rec[{j-QRM.N}] "                               
+    #        detector_str += "\n"
+    #observable_str = ""
+    #if z_basis:
+    #    for i, row in enumerate(QRM.LZ):
+    #        observable_str += f"OBSERVABLE_INCLUDE({i}) "
+    #        for j, value in enumerate(row):
+    #            if value == 1:
+    #                observable_str += f"rec[{j-QRM.N}] "
+    #        observable_str += "\n"
+    #detector_circuit = stim.Circuit(detector_str) 
+    #circuit += detector_circuit
+    #    
+    #observable_circuit = stim.Circuit(observable_str)
+    #circuit+= observable_circuit
 
     return circuit
+
+
+
+def get_syndrom_extraction_order(QRM):
+    bipartite_X = nx.Graph()
+    bipartite_Z = nx.Graph()
+    
+    for i in range(QRM.N):
+        bipartite_X.add_node(f"Q{i}", bipartite=0)
+        bipartite_Z.add_node(f"Q{i}", bipartite=0)
+    
+    for i in range(QRM.GSX):
+        bipartite_Z.add_node(f"S{QRM.N+i}", bipartite=1)
+        bipartite_X.add_node(f"S{QRM.N+i}", bipartite=1)
 
 
 def dict_to_csc_matrix(elements_dict, shape):

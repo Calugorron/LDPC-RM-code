@@ -4,17 +4,17 @@
 {
     "distutils": {
         "depends": [
-            "/home/calugorron/Documents/QEE/SlidingWindowDecoder/SlidingWindowDecoder/.venv/lib/python3.13/site-packages/numpy/core/include/numpy/arrayobject.h",
-            "/home/calugorron/Documents/QEE/SlidingWindowDecoder/SlidingWindowDecoder/.venv/lib/python3.13/site-packages/numpy/core/include/numpy/arrayscalars.h",
-            "/home/calugorron/Documents/QEE/SlidingWindowDecoder/SlidingWindowDecoder/.venv/lib/python3.13/site-packages/numpy/core/include/numpy/ndarrayobject.h",
-            "/home/calugorron/Documents/QEE/SlidingWindowDecoder/SlidingWindowDecoder/.venv/lib/python3.13/site-packages/numpy/core/include/numpy/ndarraytypes.h",
-            "/home/calugorron/Documents/QEE/SlidingWindowDecoder/SlidingWindowDecoder/.venv/lib/python3.13/site-packages/numpy/core/include/numpy/ufuncobject.h"
+            "/home/calugorron/Documents/QEE/LDPC&RM code/.venv/lib/python3.13/site-packages/numpy/core/include/numpy/arrayobject.h",
+            "/home/calugorron/Documents/QEE/LDPC&RM code/.venv/lib/python3.13/site-packages/numpy/core/include/numpy/arrayscalars.h",
+            "/home/calugorron/Documents/QEE/LDPC&RM code/.venv/lib/python3.13/site-packages/numpy/core/include/numpy/ndarrayobject.h",
+            "/home/calugorron/Documents/QEE/LDPC&RM code/.venv/lib/python3.13/site-packages/numpy/core/include/numpy/ndarraytypes.h",
+            "/home/calugorron/Documents/QEE/LDPC&RM code/.venv/lib/python3.13/site-packages/numpy/core/include/numpy/ufuncobject.h"
         ],
         "extra_compile_args": [
             "-std=c11"
         ],
         "include_dirs": [
-            "/home/calugorron/Documents/QEE/SlidingWindowDecoder/SlidingWindowDecoder/.venv/lib/python3.13/site-packages/numpy/core/include",
+            "/home/calugorron/Documents/QEE/LDPC&RM code/.venv/lib/python3.13/site-packages/numpy/core/include",
             "src/include"
         ],
         "name": "src.c_util",
