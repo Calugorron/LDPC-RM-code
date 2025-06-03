@@ -27,8 +27,8 @@ class QuantumReedMuller:
         self._GZ = None
         self._GSX = None
         self._GSZ = None
-        #self._aggregate_matrix_X = None
-        #self._aggregate_matrix_Z = None
+        self._aggregate_matrix_X = None
+        self._aggregate_matrix_Z = None
         #self._extra_aggregate_matrix_X = None
         #self._extra_aggregate_matrix_Z = None
         #self._overchecked_SX = None
@@ -138,50 +138,50 @@ class QuantumReedMuller:
             if rank(self._GSX) == len(self._SX)+len(self._GX):
                 print("All stabilizers have weight reduced from the gauges")
 
-            print("Adding the remaining gauge in order to create a generator group of size generators_size")
-            def add_remaining_gauge(poly, call):
-                added = False
-                print(call)
-                for check in reversed(all_checks):
-                    if not (poly == saved_poly[i] and check == saved_check[i]):
-                        new_gauge = gen_pattern(poly, check)
-                        for gauge in self._GSX:
-                            if self.is_stabilizer(new_gauge+gauge) and np.any(new_gauge+gauge):
-                                self._GSX.append(new_gauge)
-                                added=True
-                                break
-                        if added:
-                            added=False
-                            break
-                        
-                if len(self._GSX) < generators_size and call < len(poly)*len(all_checks):
-                    add_remaining_gauge(polynomials[(call+1)%len(polynomials)], call+1)
-                elif call == len(poly)*len(all_checks):
-                    print("Couldn't reach the desired number of gauge operators")
-                else:
-                    print(f"Reached {generators_size} gauge for the generators")
+            #print("Adding the remaining gauge in order to create a generator group of size generators_size")
+            #def add_remaining_gauge(poly, call):
+            #    added = False
+            #    print(call)
+            #    for check in reversed(all_checks):
+            #        if not (poly == saved_poly[i] and check == saved_check[i]):
+            #            new_gauge = gen_pattern(poly, check)
+            #            for gauge in self._GSX:
+            #                if self.is_stabilizer(new_gauge+gauge) and np.any(new_gauge+gauge):
+            #                    self._GSX.append(new_gauge)
+            #                    added=True
+            #                    break
+            #            if added:
+            #                added=False
+            #                break
+            #            
+            #    if len(self._GSX) < generators_size and call < len(poly)*len(all_checks):
+            #        add_remaining_gauge(polynomials[(call+1)%len(polynomials)], call+1)
+            #    elif call == len(poly)*len(all_checks):
+            #        print("Couldn't reach the desired number of gauge operators")
+            #    else:
+            #        print(f"Reached {generators_size} gauge for the generators")
+#
+            #add_remaining_gauge(polynomials[0], 0)
 
-            add_remaining_gauge(polynomials[0], 0)
-
-        #print("Creating aggregate matrix to rebuild stabilizers from gauge")
-        #if self._aggregate_matrix_X == None:
-        #    self._aggregate_matrix_X = []
-        #gauges = deque(list(range(len(self._GSX))))
-        #for i, stab in enumerate(self._SX):
-        #    print(f"Stab number {i}")
-        #    weight_stab = sum(stab)
-        #    weight_gauge = self._d
-        #    for comb in iter.combinations(gauges, int(weight_stab/weight_gauge)):
-        #        summed_gauge = [0]*len(stab)
-        #        for element in comb:
-        #            summed_gauge = np.bitwise_xor(summed_gauge, self._GSX[element])
-        #        if not np.any(np.bitwise_xor(summed_gauge, stab)):
-        #            row = [0]*len(self._GSX)
-        #            for element in comb:
-        #                row[element]=1
-        #            self._aggregate_matrix_X.append(row)
-        #            gauges.rotate(1)
-        #            break
+        print("Creating aggregate matrix to rebuild stabilizers from gauge")
+        if self._aggregate_matrix_X == None:
+            self._aggregate_matrix_X = []
+        gauges = deque(list(range(len(self._GSX))))
+        for i, stab in enumerate(self._SX):
+            print(f"Stab number {i}")
+            weight_stab = sum(stab)
+            weight_gauge = self._d
+            for comb in iter.combinations(gauges, int(weight_stab/weight_gauge)):
+                summed_gauge = [0]*len(stab)
+                for element in comb:
+                    summed_gauge = np.bitwise_xor(summed_gauge, self._GSX[element])
+                if not np.any(np.bitwise_xor(summed_gauge, stab)):
+                    row = [0]*len(self._GSX)
+                    for element in comb:
+                        row[element]=1
+                    self._aggregate_matrix_X.append(row)
+                    gauges.rotate(1)
+                    break
         #if aggregate_method == "extra" and all:
         #    for i, row in enumerate(np.transpose(self._aggregate_matrix_X)):
         #        if not np.any(row):
@@ -321,28 +321,28 @@ class QuantumReedMuller:
                                 new_GSZ.pop(-1)
             if rank(self._GSZ) == len(self._SZ)+len(self._GZ):
                 print("All stabilizers have weight reduced from the gauges")
-            print("Adding the remaining gauge in order to create a generator group of size generators_size")
-            def add_remaining_gauge(poly, call):
-                added = False
-                print(call)
-                for check in reversed(all_checks):
-                    if not (poly == saved_poly[i] and check == saved_check[i]):
-                        new_gauge = gen_pattern(poly, check)
-                        for gauge in self._GSZ:
-                            if self.is_stabilizer(new_gauge+gauge) and np.any(new_gauge+gauge):
-                                self._GSZ.append(new_gauge)
-                                added=True
-                                break
-                        if added:
-                            added=False
-                            break      
-                if len(self._GSZ) < generators_size and call < len(poly)*len(all_checks):
-                    add_remaining_gauge(polynomials[(call+1)%len(polynomials)], call+1)
-                elif call == len(poly)*len(all_checks):
-                    print("Couldn't reach the desired number of gauge operators")
-                else:
-                    print(f"Reached {generators_size} gauge for the generators")
-            add_remaining_gauge(polynomials[0], 0)
+            #print("Adding the remaining gauge in order to create a generator group of size generators_size")
+            #def add_remaining_gauge(poly, call):
+            #    added = False
+            #    print(call)
+            #    for check in reversed(all_checks):
+            #        if not (poly == saved_poly[i] and check == saved_check[i]):
+            #            new_gauge = gen_pattern(poly, check)
+            #            for gauge in self._GSZ:
+            #                if self.is_stabilizer(new_gauge+gauge) and np.any(new_gauge+gauge):
+            #                    self._GSZ.append(new_gauge)
+            #                    added=True
+            #                    break
+            #            if added:
+            #                added=False
+            #                break      
+            #    if len(self._GSZ) < generators_size and call < len(poly)*len(all_checks):
+            #        add_remaining_gauge(polynomials[(call+1)%len(polynomials)], call+1)
+            #    elif call == len(poly)*len(all_checks):
+            #        print("Couldn't reach the desired number of gauge operators")
+            #    else:
+            #        print(f"Reached {generators_size} gauge for the generators")
+            #add_remaining_gauge(polynomials[0], 0)
 
         #print("Creating aggregate matrix to rebuild stabilizers from gauge")
         #if self._aggregate_matrix_Z == None:

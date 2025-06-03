@@ -11,7 +11,7 @@ from src.utils import edge_coloring_bipartite
 def build_QRM_circuit(QRM, p, num_repeat, z_basis=True, use_both=False, HZH=False, aggregate_method="simple"):
     circuit = stim.Circuit()
     
-    edge_coloring, colors = edge_coloring_bipartite(np.concatenate((QRM.GSZ, QRM.GSX)))
+    #edge_coloring, colors = edge_coloring_bipartite(np.concatenate((QRM.GSZ, QRM.GSX)))
     
     data_size = QRM.N
     stab_size = len(QRM.GSX)
@@ -51,17 +51,17 @@ def build_QRM_circuit(QRM, p, num_repeat, z_basis=True, use_both=False, HZH=Fals
         circuit += stim.Circuit(Z_stab_SE)
     #circuit += stim.Circuit(X_stab_SE)
 
-    for color in range(colors+1):
-        for edge in edge_coloring[color]:
-            if edge[0]<48:
-                circuit.append("CNOT", [int(edge[1]), int(edge[0])+data_size])
-            else:
-                circuit.append("CNOT", [int(edge[0])+data_size, int(edge[1])])
-        #linked_edges = X_tanner_graph.edges(edge[1], "color")
-        #max_color_value = max(edge_tuple[2] for edge_tuple in linked_edges)
-        #if color == max_color_value:
-        #    circuit.append("Z_ERROR", n + len(GZ)+int(edge[1][1:]), p)
-        #    circuit.append("MX", n + len(GZ)+int(edge[1][1:]))
+    #for color in range(colors+1):
+    #    for edge in edge_coloring[color]:
+    #        if edge[0]<48:
+    #            circuit.append("CNOT", [int(edge[1]), int(edge[0])+data_size])
+    #        else:
+    #            circuit.append("CNOT", [int(edge[0])+data_size, int(edge[1])])
+    #    #linked_edges = X_tanner_graph.edges(edge[1], "color")
+    #    #max_color_value = max(edge_tuple[2] for edge_tuple in linked_edges)
+    #    #if color == max_color_value:
+    #    #    circuit.append("Z_ERROR", n + len(GZ)+int(edge[1][1:]), p)
+    #    #    circuit.append("MX", n + len(GZ)+int(edge[1][1:]))
                 
     circuit.append("TICK")
     ###########ROUNDS
